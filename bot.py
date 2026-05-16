@@ -10,6 +10,10 @@ TOKEN = os.environ.get("TOKEN", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "")
 FIREBASE_URL = "https://sabuj-computers-default-rtdb.asia-southeast1.firebasedatabase.app"
+FIREBASE_SECRET = os.environ.get("FIREBASE_SECRET", "")
+
+def get_auth_param():
+    return f"?auth={FIREBASE_SECRET}" if FIREBASE_SECRET else ""
 
 # Setup Gemini AI if available
 ai_client = None
@@ -22,19 +26,25 @@ if GEMINI_API_KEY:
 # Database Helpers
 def get_db(path):
     try:
-        res = requests.get(f"{FIREBASE_URL}/{path}.json")
+        url = f"{FIREBASE_URL}/{path}.json{get_auth_param()}"
+        res = requests.get(url)
         if res.status_code == 200:
             return res.json()
+        print(f"GET failed: {res.status_code} - {res.text}")
     except Exception as e:
         print(f"Error reading DB: {e}")
     return None
 
 def put_db(path, data):
-    res = requests.put(f"{FIREBASE_URL}/{path}.json", json=data)
+    url = f"{FIREBASE_URL}/{path}.json{get_auth_param()}"
+    res = requests.put(url, json=data)
+    print(f"PUT db [{path}]:", res.text)
     return res.json()
     
 def patch_db(path, data):
-    res = requests.patch(f"{FIREBASE_URL}/{path}.json", json=data)
+    url = f"{FIREBASE_URL}/{path}.json{get_auth_param()}"
+    res = requests.patch(url, json=data)
+    print(f"PATCH db [{path}]:", res.text)
     return res.json()
 
 def get_main_keyboard():
@@ -55,10 +65,23 @@ def get_main_keyboard():
 # 1. Start Command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message if update.message else update.callback_query.message
+    
+    # Get live dynamic values from Firebase
+    apps = get_db("sabuj/applications")
+    total_students = len(apps) if apps and isinstance(apps, dict) else 1000
+    
+    bot_settings = get_db("sabuj/bot_settings") or {}
+    custom_desc = bot_settings.get("welcome_text", "")
+    
+    if custom_desc:
+        desc_text = custom_desc
+    else:
+        desc_text = f"✨ *৫+ বছরের অভিজ্ঞতা* | *{total_students}+ শিক্ষার্থী* | *১০০% সার্টিফিকেট গ্যারান্টি*"
+
     text = (
         "🌿 *সবুজ কম্পিউটার্সে আপনাকে স্বাগতম!*\n\n"
         "বাগাতিপাড়া, নাটোরের সেরা BTEB অনুমোদিত কম্পিউটার প্রশিক্ষণ কেন্দ্র।\n"
-        "✨ *৫+ বছরের অভিজ্ঞতা* | *১০০০+ শিক্ষার্থী* | *১০০% সার্টিফিকেট গ্যারান্টি*\n\n"
+        f"{desc_text}\n\n"
         "আমি একটি স্মার্ট AI বট। আপনি চাইলে স্বাভাবিক ভাষায় আমার সাথে কথা বলে তথ্য জানতে পারবেন।\n\n"
         "নিচের মেনু থেকে আপনার প্রয়োজনীয় সেবা বেছে নিন 👇"
     )
@@ -177,8 +200,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "(শুক্রবার লাইব্রেরি বন্ধ)",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📞 কল করুন", url="tel:+8801724084350"),
-                 InlineKeyboardButton("💬 WhatsApp", url="https://wa.me/8801724084350")],
+                [InlineKeyboardButton("💬 WhatsApp-এ মেসেজ দিন", url="https://wa.me/8801724084350")],
                 [InlineKeyboardButton("🔙 মেনুতে ফিরে যাও", callback_data="menu")]
             ])
         )
