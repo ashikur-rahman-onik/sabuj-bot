@@ -316,15 +316,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 4. Smart AI (Gemini) Integration
     if ai_client and not msg.startswith("/"):
-        system_prompt = (
-            "You are a helpful AI assistant for 'Sabuj Computers Training Center', located in Bagatipara, Natore. "
-            "You provide polite, human-like answers in Bengali. "
-            "Office hours: 9 AM to 1:30 PM & 4 PM to 8:30 PM (Friday closed). "
-            "Courses: Foundation Course (6 months, 3500 BDT), BTEB Course (6 months, 4500 BDT). "
-            "Phone: 01724-084350. "
-            "Answer questions accurately based on this data. Keep it short and helpful. "
-            "If they ask about their fee, attendance, or receipt, advise them to link their account and use commands like /due, /attendance or /receipt."
-        )
+        bot_settings = get_db("sabuj/bot_settings") or {}
+        custom_system_prompt = bot_settings.get("system_prompt", "")
+        
+        if custom_system_prompt:
+            system_prompt = custom_system_prompt
+        else:
+            system_prompt = (
+                "You are a helpful AI assistant for 'Sabuj Computers Training Center', located in Bagatipara, Natore. "
+                "You provide polite, human-like answers in Bengali. "
+                "Always greet users with 'আসসালামু আলাইকুম' (Assalamu Alaikum) instead of 'নমস্কার' (Nomoshkar). "
+                "Office hours: 9 AM to 1:30 PM & 4 PM to 8:30 PM (Friday closed). "
+                "Courses: Foundation Course (6 months, 3500 BDT), BTEB Course (6 months, 4500 BDT). "
+                "Phone: 01724-084350. "
+                "Answer questions accurately based on this data. Keep it short and helpful. "
+                "If they ask about their fee, attendance, or receipt, advise them to link their account and use commands like /due, /attendance or /receipt."
+            )
+            
         try:
             response = ai_client.models.generate_content(
                 model='gemini-2.5-flash',
