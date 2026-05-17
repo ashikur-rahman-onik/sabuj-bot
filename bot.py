@@ -912,6 +912,17 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ──────────────────────────────────────────────
 # ⚙️ Bot Commands Registration
 # ──────────────────────────────────────────────
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    """Global error handler — suppresses known harmless errors, logs the rest."""
+    from telegram.error import Conflict, NetworkError, TimedOut
+    err = context.error
+    if isinstance(err, Conflict):
+        logger.warning("⚠️  Conflict: পুরনো instance বন্ধ হচ্ছে, কিছুক্ষণের মধ্যে ঠিক হবে।")
+    elif isinstance(err, (NetworkError, TimedOut)):
+        logger.warning(f"🌐 Network সমস্যা (retry হবে): {err}")
+    else:
+        logger.error(f"❌ Unexpected error: {err}", exc_info=context.error)
+
 async def post_init(application):
     """Set bot command list shown in Telegram menu."""
     commands = [
@@ -956,6 +967,9 @@ def main():
     # Callback & messages
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # Global error handler
+    app.add_error_handler(error_handler)
 
     logger.info("🚀 সবুজ কম্পিউটার্স Bot চালু হচ্ছে... (Firebase + Gemini AI)")
     app.run_polling(drop_pending_updates=True)
