@@ -10,7 +10,6 @@ import re
 import time
 import logging
 import datetime
-import functools
 from collections import defaultdict
 
 import requests
